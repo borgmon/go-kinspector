@@ -78,7 +78,6 @@ func layout(g *gocui.Gui) error {
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
-		v.Editable = true
 
 	}
 
@@ -97,7 +96,8 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		fmt.Fprintf(helpV, "q \033[32;7mto quit\033[0m e \033[32;7mto export line as json file\033[0m ")
+
+		genHelp(helpV, map[string]string{"q": "quite", "e": "export json"})
 	}
 
 	return nil
@@ -258,4 +258,10 @@ func getLine(v *gocui.View, modifier int) (l string, err error) {
 		l = ""
 	}
 	return
+}
+
+func genHelp(view *gocui.View, hotkeymap map[string]string) {
+	for k, v := range hotkeymap {
+		fmt.Fprintf(view, "%v \033[32;7m%v\033[0m ", k, v)
+	}
 }

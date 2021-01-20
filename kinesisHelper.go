@@ -57,10 +57,12 @@ func getClient() (*kinesis.Client, error) {
 }
 
 func populateList(g *gocui.Gui, name string) {
+	addLog(g, "getting shards...")
 	shard, err := listShards(name)
 	if err != nil {
 		addLog(g, err)
 	}
+	addLog(g, "getting records...")
 	err = getRecords(g, name, shard, nil, recordPageCounter)
 	if err != nil {
 		addLog(g, err)

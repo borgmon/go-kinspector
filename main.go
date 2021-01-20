@@ -33,6 +33,7 @@ func main() {
 		log.Panicln(err)
 	}
 	g.Mouse = true
+	g.Highlight = true
 	g.SelFgColor = gocui.ColorGreen
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
@@ -51,7 +52,7 @@ func layout(g *gocui.Gui) error {
 		v.Autoscroll = true
 		fmt.Fprintln(v, "starting...")
 	}
-	if v, err := g.SetView(panelStreamName, -1, -1, maxX/4, maxY-10); err != nil {
+	if v, err := g.SetView(panelStreamName, -1, 1, maxX/4, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
@@ -70,7 +71,7 @@ func layout(g *gocui.Gui) error {
 		}
 	}
 
-	if v, err := g.SetView(panelMessage, maxX/4, -1, 2*maxX/4, maxY-10); err != nil {
+	if v, err := g.SetView(panelMessage, maxX/4, 1, 2*maxX/4, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
@@ -83,7 +84,7 @@ func layout(g *gocui.Gui) error {
 
 	}
 
-	if v, err := g.SetView(panelData, 2*maxX/4, -1, maxX, maxY-10); err != nil {
+	if v, err := g.SetView(panelData, 2*maxX/4, 1, maxX, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
@@ -182,7 +183,6 @@ func listItemBack(g *gocui.Gui, v *gocui.View) error {
 		swapFocus(g, v, panelMessage)
 		setCurrentViewOnTop(g, panelMessage)
 	case panelMessage:
-		swapFocus(g, v, panelStreamName)
 		setCurrentViewOnTop(g, panelStreamName)
 	}
 	return nil
@@ -199,9 +199,6 @@ func listItemSelect(g *gocui.Gui, v *gocui.View) error {
 
 	switch v.Name() {
 	case panelStreamName:
-		if err := swapFocus(g, v, panelMessage); err != nil {
-			addLog(g, err)
-		}
 		if err := clearView(g, panelMessage); err != nil {
 			addLog(g, err)
 		}
@@ -215,9 +212,6 @@ func listItemSelect(g *gocui.Gui, v *gocui.View) error {
 			addLog(g, err)
 		}
 	case panelMessage:
-		if err := swapFocus(g, v, panelData); err != nil {
-			addLog(g, err)
-		}
 		if err := clearView(g, panelData); err != nil {
 			addLog(g, err)
 		}

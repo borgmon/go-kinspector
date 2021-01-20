@@ -115,6 +115,12 @@ func keybindings(g *gocui.Gui) error {
 	}
 
 	for _, n := range []string{panelStreamName, panelMessage} {
+		if err := g.SetKeybinding(n, gocui.MouseLeft, gocui.ModNone, mouseClick); err != nil {
+			return err
+		}
+	}
+
+	for _, n := range []string{panelStreamName, panelMessage} {
 		if err := g.SetKeybinding(n, gocui.KeyArrowUp, gocui.ModNone, listItemUp); err != nil {
 			return err
 		}
@@ -264,4 +270,14 @@ func genHelp(view *gocui.View, hotkeymap map[string]string) {
 	for k, v := range hotkeymap {
 		fmt.Fprintf(view, "%v \033[32;7m%v\033[0m ", k, v)
 	}
+}
+
+func mouseClick(g *gocui.Gui, v *gocui.View) error {
+	switch v.Name() {
+	case panelStreamName:
+		return listItemSelect(g, v)
+	case panelMessage:
+		return listItemSelect(g, v)
+	}
+	return nil
 }

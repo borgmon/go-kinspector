@@ -113,6 +113,9 @@ func keybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("", 'q', gocui.ModNone, quit); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("", 'e', gocui.ModNone, printDebug); err != nil {
+		return err
+	}
 
 	for _, n := range []string{panelStreamName, panelMessage} {
 		if err := g.SetKeybinding(n, gocui.KeyArrowUp, gocui.ModNone, listItemUp); err != nil {
@@ -145,6 +148,11 @@ func keybindings(g *gocui.Gui) error {
 
 func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
+}
+
+func printDebug(g *gocui.Gui, v *gocui.View) error {
+	addLog(g, msgDict)
+	return nil
 }
 
 func addLog(g *gocui.Gui, msg interface{}) {
@@ -191,16 +199,31 @@ func listItemSelect(g *gocui.Gui, v *gocui.View) error {
 
 	switch v.Name() {
 	case panelStreamName:
-		swapFocus(g, v, panelMessage)
-		clearView(g, panelMessage)
-		setCurrentViewOnTop(g, panelMessage)
+		if err := swapFocus(g, v, panelMessage); err != nil {
+			addLog(g, err)
+		}
+		if err := clearView(g, panelMessage); err != nil {
+			addLog(g, err)
+		}
+		if err := clearView(g, panelData); err != nil {
+			addLog(g, err)
+		}
+		if _, err := setCurrentViewOnTop(g, panelMessage); err != nil {
+			addLog(g, err)
+		}
 		if err := populateList(g, l); err != nil {
 			addLog(g, err)
 		}
 	case panelMessage:
-		swapFocus(g, v, panelData)
-		clearView(g, panelData)
-		setCurrentViewOnTop(g, panelData)
+		if err := swapFocus(g, v, panelData); err != nil {
+			addLog(g, err)
+		}
+		if err := clearView(g, panelData); err != nil {
+			addLog(g, err)
+		}
+		if _, err := setCurrentViewOnTop(g, panelData); err != nil {
+			addLog(g, err)
+		}
 		if err := showMessage(g, l); err != nil {
 			addLog(g, err)
 		}

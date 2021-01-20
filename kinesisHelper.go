@@ -2,17 +2,19 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/jroimartin/gocui"
+	"github.com/tidwall/pretty"
 )
 
 var (
 	client            *kinesis.Client = nil
 	recordPageCounter                 = 10
-	msgDict                           = make(map[*string][]byte)
+	msgDict                           = make(map[string][]byte)
 )
 
 func getStreamNames(g *gocui.Gui, v *gocui.View) (err error) {
@@ -101,8 +103,10 @@ func getRecords(g *gocui.Gui, name string, shardID *string, iterator *string, co
 		}
 
 		for _, r := range records.Records {
-			fmt.Fprintln(msgV, *r.SequenceNumber)
-			msgDict[r.SequenceNumber] = r.Data
+			key := (*r.ApproximateArrivalTimestamp).Format(time.RFC1123)
+			fmt.Fprintln(msgV, key)
+
+			msgDict[key] = r.Data
 		}
 
 		return nil
@@ -130,7 +134,8 @@ func showMessage(g *gocui.Gui, sequenceNumber string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(v, msgDict[&sequenceNumber])
+		jByte := pretty.Pretty(msgDict[sequenceNumber])
+		fmt.Fprintln(v, string(jByte))
 		return nil
 	})
 	return nil

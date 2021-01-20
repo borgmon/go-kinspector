@@ -1,13 +1,10 @@
-package main1
+package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/jroimartin/gocui"
 )
 
@@ -26,6 +23,7 @@ func main() {
 	if err := keybindings(g); err != nil {
 		log.Panicln(err)
 	}
+	g.Mouse = true
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
 		log.Fatalln(err)
@@ -34,9 +32,15 @@ func main() {
 
 func layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
-	if mainV, err := g.SetView("main_view", -1, -1, maxX, maxY-10); err != nil {
+	if logV, err := g.SetView("log", -1, maxY-10, maxX, maxY-2); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
+		}
+		fmt.Fprintln(logV, "starting...")
+	}
+	if mainV, err := g.SetView("select_name", -1, -1, maxX/5, maxY-10); err != nil {
+		if err != gocui.ErrUnknownView {
+			addLog(g, err)
 		}
 		mainV.Autoscroll = true
 		err = listStream(g, mainV)
@@ -44,20 +48,29 @@ func layout(g *gocui.Gui) error {
 			addLog(g, err)
 		}
 	}
-	if logV, err := g.SetView("log", -1, maxY-10, maxX, maxY-2); err != nil {
+
+	if _, err := g.SetView("select_msg", maxX/5, -1, 2*maxX/5, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
-			return err
+			addLog(g, err)
 		}
-		fmt.Fprintln(logV, "starting...")
 	}
+
+	if _, err := g.SetView("select_detail", 2*maxX/5, -1, maxX, maxY-10); err != nil {
+		if err != gocui.ErrUnknownView {
+			addLog(g, err)
+		}
+	}
+
 	if helpV, err := g.SetView("help", -1, maxY-2, maxX, maxY); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		fmt.Fprintln(helpV, "q to quit; e to export line as json file")
 	}
+
 	return nil
 }
+
 func keybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		return err
@@ -67,35 +80,11 @@ func keybindings(g *gocui.Gui) error {
 	}
 	return nil
 }
+
 func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
-func listStream(g *gocui.Gui, v *gocui.View) error {
-
-	config, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return err
-	}
-	client := kinesis.NewFromConfig(config)
-
-	streamsInput := &kinesis.ListStreamsInput{}
-	streamsOutput, err := client.ListStreams(ctx, streamsInput)
-	if err != nil {
-		return err
-	}
-
-	g.Update(func(g *gocui.Gui) error {
-		_, err := drawSelectPopup(g, streamsOutput.StreamNames)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-	return nil
-
-}
 func addLog(g *gocui.Gui, msg interface{}) {
 	g.Update(func(g *gocui.Gui) error {
 		v, err := g.View("log")
@@ -105,18 +94,4 @@ func addLog(g *gocui.Gui, msg interface{}) {
 		fmt.Fprintln(v, msg)
 		return nil
 	})
-}
-func drawSelectPopup(g *gocui.Gui, ls []string) (*gocui.View, error) {
-	maxX, maxY := g.Size()
-	if v, err := g.SetView("select_popup", maxX/2-20, (maxY-len(ls))/2, maxX/2+20, ((maxY-len(ls))/2)+len(ls)); err != nil {
-		if err != gocui.ErrUnknownView {
-			return nil, err
-		}
-
-		for _, e := range ls {
-			fmt.Fprintln(v, e)
-		}
-		return v, nil
-	}
-	return nil, errors.New("fail create popup")
 }

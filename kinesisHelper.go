@@ -15,6 +15,7 @@ var (
 	client            *kinesis.Client = nil
 	recordPageCounter                 = 5
 	msgDict                           = make(map[string][]byte)
+	partitionKey                      = "partition-1"
 )
 
 func getStreamNames(g *gocui.Gui, v *gocui.View) (err error) {
@@ -67,6 +68,7 @@ func populateList(g *gocui.Gui, name string) {
 	if err != nil {
 		addLog(g, err)
 	}
+	addLog(g, "done loading records")
 }
 
 func listShards(name string) (*string, error) {
@@ -144,4 +146,17 @@ func showMessage(g *gocui.Gui, sequenceNumber string) error {
 		return nil
 	})
 	return nil
+}
+
+func insertRecord(streamName string, data []byte) (string, error) {
+	putRecordInput := &kinesis.PutRecordInput{
+		Data:         data,
+		PartitionKey: &partitionKey,
+		StreamName:   &streamName,
+	}
+	out, err := client.PutRecord(ctx, putRecordInput)
+	if err != nil {
+		return "", err
+	}
+	return *out.SequenceNumber, nil
 }

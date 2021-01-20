@@ -45,7 +45,7 @@ func main() {
 
 func layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
-	if v, err := g.SetView(panelLog, -1, maxY-10, maxX, maxY-2); err != nil {
+	if v, err := g.SetView(panelLog, 1, maxY-9, maxX-1, maxY-4); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -54,7 +54,7 @@ func layout(g *gocui.Gui) error {
 		v.Autoscroll = true
 		fmt.Fprintln(v, "starting...")
 	}
-	if v, err := g.SetView(panelStreamName, -1, 1, maxX/4, maxY-10); err != nil {
+	if v, err := g.SetView(panelStreamName, 1, 1, maxX/4-1, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
@@ -72,7 +72,7 @@ func layout(g *gocui.Gui) error {
 		}
 	}
 
-	if v, err := g.SetView(panelMessage, maxX/4, 1, 2*maxX/4, maxY-10); err != nil {
+	if v, err := g.SetView(panelMessage, maxX/4, 1, 2*maxX/4-1, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
@@ -83,7 +83,7 @@ func layout(g *gocui.Gui) error {
 
 	}
 
-	if v, err := g.SetView(panelData, 2*maxX/4, 1, maxX, maxY-10); err != nil {
+	if v, err := g.SetView(panelData, 2*maxX/4, 1, maxX-1, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
@@ -94,12 +94,12 @@ func layout(g *gocui.Gui) error {
 
 	}
 
-	if helpV, err := g.SetView(panelHelp, -1, maxY-2, maxX, maxY); err != nil {
+	if helpV, err := g.SetView(panelHelp, 1, maxY-3, maxX-1, maxY-1); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 
-		genHelp(helpV, map[string]string{"q": "quite", "e": "export json"})
+		genHelp(helpV, map[string]string{"q": "quit", "e": "export json", "i": "insert record"})
 	}
 
 	return nil
@@ -150,6 +150,12 @@ func keybindings(g *gocui.Gui) error {
 		}
 	}
 	if err := g.SetKeybinding(panelPopUp, gocui.KeyEsc, gocui.ModNone, closePopup); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(panelMessage, 'i', gocui.ModNone, addNewRecord); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(panelPopUp, gocui.KeyEnter, gocui.ModNone, conformPopup); err != nil {
 		return err
 	}
 
@@ -330,19 +336,35 @@ func exportJSON(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-func popUp(g *gocui.Gui, msg string) error {
+// warning: msg and input false
+// selection: msg and input true
+// input: nil and input true
+func popUp(g *gocui.Gui, title string, msg []string, input bool) error {
 	maxX, maxY := g.Size()
 	if v, err := g.SetView(panelPopUp, maxX/2-30, maxY/2, maxX/2+30, maxY/2+2); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		fmt.Fprintln(v, msg)
+		v.Title = title
+		for _, e := range msg {
+			fmt.Fprintln(v, e)
+		}
+		if msg != nil && input {
+			v.Highlight = true
+			v.SelBgColor = gocui.ColorGreen
+			v.SelFgColor = gocui.ColorBlack
+
+		}
+		if msg == nil && input {
+			v.Editable = true
+		}
 		if _, err := g.SetCurrentView(panelPopUp); err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
 func closePopup(g *gocui.Gui, v *gocui.View) error {
 	if err := g.DeleteView(panelPopUp); err != nil {
 		return err
@@ -351,4 +373,46 @@ func closePopup(g *gocui.Gui, v *gocui.View) error {
 		return err
 	}
 	return nil
+}
+
+func addNewRecord(g *gocui.Gui, v *gocui.View) error {
+	if err := popUp(g, "New Record", nil, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func conformPopup(g *gocui.Gui, v *gocui.View) error {
+	msgV, err := g.View(panelStreamName)
+	if err != nil {
+		addLog(g, err.Error())
+		return err
+	}
+	streamName, err := getLine(msgV, 0)
+	if err != nil {
+		addLog(g, err.Error())
+		return err
+	}
+
+	p := make([]byte, 5)
+	v.Rewind()
+	for {
+		n, err := v.Read(p)
+		if n > 0 {
+			if _, err := insertRecord(streamName, p[:n]); err != nil {
+				addLog(g, err.Error())
+				return err
+			}
+			addLog(g, "successfully put new record")
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			addLog(g, err.Error())
+			return err
+		}
+	}
+
+	return closePopup(g, v)
 }

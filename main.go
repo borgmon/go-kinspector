@@ -24,6 +24,7 @@ func main() {
 		log.Panicln(err)
 	}
 	g.Mouse = true
+	g.SelFgColor = gocui.ColorGreen
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
 		log.Fatalln(err)
@@ -32,33 +33,41 @@ func main() {
 
 func layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
-	if logV, err := g.SetView("log", -1, maxY-10, maxX, maxY-2); err != nil {
+	if v, err := g.SetView("log", -1, maxY-10, maxX, maxY-2); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		fmt.Fprintln(logV, "starting...")
+		v.Title = "Logs"
+		fmt.Fprintln(v, "starting...")
 	}
-	if mainV, err := g.SetView("select_name", -1, -1, maxX/5, maxY-10); err != nil {
+	if v, err := g.SetView("name", -1, -1, maxX/4, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
-		mainV.Autoscroll = true
-		err = listStream(g, mainV)
+		v.Title = "Stream Names"
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+
+		v.Autoscroll = true
+		err = getStreamNames(g, v)
 		if err != nil {
 			addLog(g, err)
 		}
 	}
 
-	if _, err := g.SetView("select_msg", maxX/5, -1, 2*maxX/5, maxY-10); err != nil {
+	if v, err := g.SetView("message", maxX/4, -1, 2*maxX/4, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
+		v.Title = "SequenceNumber"
 	}
 
-	if _, err := g.SetView("select_detail", 2*maxX/5, -1, maxX, maxY-10); err != nil {
+	if v, err := g.SetView("data", 2*maxX/4, -1, maxX, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
+		v.Title = "Body"
 	}
 
 	if helpV, err := g.SetView("help", -1, maxY-2, maxX, maxY); err != nil {
@@ -68,6 +77,9 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintln(helpV, "q to quit; e to export line as json file")
 	}
 
+	if _, err := g.SetCurrentView("name"); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -78,6 +90,23 @@ func keybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("", 'q', gocui.ModNone, quit); err != nil {
 		return err
 	}
+
+	for _, n := range []string{"name", "message"} {
+		if err := g.SetKeybinding(n, gocui.KeyArrowUp, gocui.ModNone, listItemUp); err != nil {
+			return err
+		}
+	}
+	for _, n := range []string{"name", "message"} {
+		if err := g.SetKeybinding(n, gocui.KeyArrowDown, gocui.ModNone, listItemDown); err != nil {
+			return err
+		}
+	}
+	for _, n := range []string{"name", "message"} {
+		if err := g.SetKeybinding(n, gocui.KeyEnter, gocui.ModNone, listItemSelect); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -94,4 +123,43 @@ func addLog(g *gocui.Gui, msg interface{}) {
 		fmt.Fprintln(v, msg)
 		return nil
 	})
+}
+
+func listItemUp(g *gocui.Gui, v *gocui.View) error {
+	v.MoveCursor(0, -1, false)
+	return nil
+}
+
+func listItemDown(g *gocui.Gui, v *gocui.View) error {
+	v.MoveCursor(0, 1, false)
+	return nil
+}
+
+func listItemSelect(g *gocui.Gui, v *gocui.View) error {
+	var l string
+	var err error
+
+	_, cy := v.Cursor()
+	if l, err = v.Line(cy); err != nil {
+		l = ""
+	}
+
+	switch v.Name() {
+	case "name":
+		if err := populateList(g, l); err != nil {
+			addLog(g, err)
+		}
+	case "message":
+		if err := showMessage(g, l); err != nil {
+			addLog(g, err)
+		}
+	}
+	return nil
+}
+
+func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
+	if _, err := g.SetCurrentView(name); err != nil {
+		return nil, err
+	}
+	return g.SetViewOnTop(name)
 }

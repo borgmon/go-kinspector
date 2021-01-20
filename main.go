@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"os"
 
 	"github.com/jroimartin/gocui"
 )
@@ -14,11 +16,11 @@ const (
 	panelData       = "Data"
 	panelHelp       = "Help"
 	panelLog        = "Log"
+	panelPopUp      = "PopUp"
 )
 
 var (
-	ctx        = context.TODO()
-	panelOrder = []string{panelStreamName, panelMessage, panelData}
+	ctx = context.TODO()
 )
 
 func main() {
@@ -110,9 +112,6 @@ func keybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("", 'q', gocui.ModNone, quit); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", 'e', gocui.ModNone, printDebug); err != nil {
-		return err
-	}
 
 	for _, n := range []string{panelStreamName, panelMessage} {
 		if err := g.SetKeybinding(n, gocui.MouseLeft, gocui.ModNone, mouseClick); err != nil {
@@ -144,6 +143,14 @@ func keybindings(g *gocui.Gui) error {
 		if err := g.SetKeybinding(n, gocui.KeyEnter, gocui.ModNone, listItemSelect); err != nil {
 			return err
 		}
+	}
+	for _, n := range []string{panelData} {
+		if err := g.SetKeybinding(n, 'e', gocui.ModNone, exportJSON); err != nil {
+			return err
+		}
+	}
+	if err := g.SetKeybinding(panelPopUp, gocui.KeyEsc, gocui.ModNone, closePopup); err != nil {
+		return err
 	}
 
 	return nil
@@ -278,6 +285,70 @@ func mouseClick(g *gocui.Gui, v *gocui.View) error {
 		return listItemSelect(g, v)
 	case panelMessage:
 		return listItemSelect(g, v)
+	}
+	return nil
+}
+
+func exportJSON(g *gocui.Gui, v *gocui.View) error {
+	msgV, err := g.View(panelMessage)
+	if err != nil {
+		addLog(g, err.Error())
+		return err
+	}
+	l, err := getLine(msgV, 0)
+	if err != nil {
+		addLog(g, err.Error())
+		return err
+	}
+	fileName := l + ".json"
+	f, err := os.Create(fileName)
+	if err != nil {
+		addLog(g, err.Error())
+		return err
+	}
+	defer f.Close()
+
+	p := make([]byte, 5)
+	v.Rewind()
+	for {
+		n, err := v.Read(p)
+		if n > 0 {
+			if _, err := f.Write(p[:n]); err != nil {
+				addLog(g, err.Error())
+				return err
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			addLog(g, err.Error())
+			return err
+		}
+	}
+	addLog(g, "saved to "+fileName)
+	return nil
+}
+
+func popUp(g *gocui.Gui, msg string) error {
+	maxX, maxY := g.Size()
+	if v, err := g.SetView(panelPopUp, maxX/2-30, maxY/2, maxX/2+30, maxY/2+2); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		fmt.Fprintln(v, msg)
+		if _, err := g.SetCurrentView(panelPopUp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func closePopup(g *gocui.Gui, v *gocui.View) error {
+	if err := g.DeleteView(panelPopUp); err != nil {
+		return err
+	}
+	if _, err := g.SetCurrentView(panelMessage); err != nil {
+		return err
 	}
 	return nil
 }

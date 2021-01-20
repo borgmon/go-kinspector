@@ -61,7 +61,6 @@ func layout(g *gocui.Gui) error {
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
 
-		v.Autoscroll = true
 		err = getStreamNames(g, v)
 		if err != nil {
 			addLog(g, err)
@@ -80,7 +79,6 @@ func layout(g *gocui.Gui) error {
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
 		v.Editable = true
-		v.Autoscroll = true
 
 	}
 
@@ -92,8 +90,6 @@ func layout(g *gocui.Gui) error {
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
-
-		v.Autoscroll = true
 
 	}
 
@@ -174,14 +170,14 @@ func listItemUp(g *gocui.Gui, v *gocui.View) error {
 }
 
 func listItemDown(g *gocui.Gui, v *gocui.View) error {
-	// l, err := getLine(v, 1)
-	// if err != nil {
-	// 	addLog(g, err)
-	// 	return err
-	// }
-	// if l != "" {
-	v.MoveCursor(0, 1, true)
-	// }
+	l, err := getLine(v, 1)
+	if err != nil {
+		addLog(g, err)
+		return err
+	}
+	if l != "" {
+		v.MoveCursor(0, 1, true)
+	}
 	return nil
 }
 

@@ -8,8 +8,17 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+const (
+	panelStreamName = "StreamName"
+	panelMessage    = "Messages"
+	panelData       = "Data"
+	panelHelp       = "Help"
+	panelLog        = "Log"
+)
+
 var (
-	ctx = context.TODO()
+	ctx        = context.TODO()
+	panelOrder = []string{panelStreamName, panelMessage, panelData}
 )
 
 func main() {
@@ -33,18 +42,20 @@ func main() {
 
 func layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
-	if v, err := g.SetView("log", -1, maxY-10, maxX, maxY-2); err != nil {
+	if v, err := g.SetView(panelLog, -1, maxY-10, maxX, maxY-2); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = "Logs"
+		v.Title = panelLog
+		v.Wrap = true
+		v.Autoscroll = true
 		fmt.Fprintln(v, "starting...")
 	}
-	if v, err := g.SetView("name", -1, -1, maxX/4, maxY-10); err != nil {
+	if v, err := g.SetView(panelStreamName, -1, -1, maxX/4, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
-		v.Title = "Stream Names"
+		v.Title = panelStreamName
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
@@ -56,28 +67,40 @@ func layout(g *gocui.Gui) error {
 		}
 	}
 
-	if v, err := g.SetView("message", maxX/4, -1, 2*maxX/4, maxY-10); err != nil {
+	if v, err := g.SetView(panelMessage, maxX/4, -1, 2*maxX/4, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
-		v.Title = "SequenceNumber"
+		v.Title = panelMessage
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+
+		v.Autoscroll = true
+
 	}
 
-	if v, err := g.SetView("data", 2*maxX/4, -1, maxX, maxY-10); err != nil {
+	if v, err := g.SetView(panelData, 2*maxX/4, -1, maxX, maxY-10); err != nil {
 		if err != gocui.ErrUnknownView {
 			addLog(g, err)
 		}
-		v.Title = "Body"
+		v.Title = panelData
+		v.Highlight = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
+
+		v.Autoscroll = true
+
 	}
 
-	if helpV, err := g.SetView("help", -1, maxY-2, maxX, maxY); err != nil {
+	if helpV, err := g.SetView(panelHelp, -1, maxY-2, maxX, maxY); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		fmt.Fprintln(helpV, "q to quit; e to export line as json file")
 	}
 
-	if _, err := g.SetCurrentView("name"); err != nil {
+	if _, err := g.SetCurrentView(panelStreamName); err != nil {
 		return err
 	}
 	return nil
@@ -91,17 +114,17 @@ func keybindings(g *gocui.Gui) error {
 		return err
 	}
 
-	for _, n := range []string{"name", "message"} {
+	for _, n := range []string{panelStreamName, panelMessage} {
 		if err := g.SetKeybinding(n, gocui.KeyArrowUp, gocui.ModNone, listItemUp); err != nil {
 			return err
 		}
 	}
-	for _, n := range []string{"name", "message"} {
+	for _, n := range []string{panelStreamName, panelMessage} {
 		if err := g.SetKeybinding(n, gocui.KeyArrowDown, gocui.ModNone, listItemDown); err != nil {
 			return err
 		}
 	}
-	for _, n := range []string{"name", "message"} {
+	for _, n := range []string{panelStreamName, panelMessage} {
 		if err := g.SetKeybinding(n, gocui.KeyEnter, gocui.ModNone, listItemSelect); err != nil {
 			return err
 		}
@@ -116,7 +139,7 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 
 func addLog(g *gocui.Gui, msg interface{}) {
 	g.Update(func(g *gocui.Gui) error {
-		v, err := g.View("log")
+		v, err := g.View(panelLog)
 		if err != nil {
 			return err
 		}
@@ -145,21 +168,14 @@ func listItemSelect(g *gocui.Gui, v *gocui.View) error {
 	}
 
 	switch v.Name() {
-	case "name":
+	case panelStreamName:
 		if err := populateList(g, l); err != nil {
 			addLog(g, err)
 		}
-	case "message":
+	case panelMessage:
 		if err := showMessage(g, l); err != nil {
 			addLog(g, err)
 		}
 	}
 	return nil
-}
-
-func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
-	if _, err := g.SetCurrentView(name); err != nil {
-		return nil, err
-	}
-	return g.SetViewOnTop(name)
 }

@@ -11,8 +11,8 @@ import (
 
 var (
 	client            *kinesis.Client = nil
-	recordPageCounter                 = 100
-	msgDict           map[*string][]byte
+	recordPageCounter                 = 10
+	msgDict                           = make(map[*string][]byte)
 )
 
 func getStreamNames(g *gocui.Gui, v *gocui.View) (err error) {
@@ -95,26 +95,20 @@ func getRecords(g *gocui.Gui, name string, shardID *string, iterator *string, co
 			return nil
 		}
 
-		msgV, err := g.View("select_msg")
+		msgV, err := g.View(panelMessage)
 		if err != nil {
 			return err
 		}
-		var detailV *gocui.View
-		if x, y := msgV.Size(); x == 0 && y == 0 {
-			detailV, err = g.View("select_detail")
-			if err != nil {
-				return err
-			}
-		}
 
 		for _, r := range records.Records {
-			fmt.Fprintln(msgV, r.SequenceNumber)
+			fmt.Fprintln(msgV, *r.SequenceNumber)
 			msgDict[r.SequenceNumber] = r.Data
 		}
 
-		if detailV != nil {
-			fmt.Fprintln(msgV, records.Records[0].SequenceNumber)
+		if _, err := g.SetCurrentView(panelMessage); err != nil {
+			return err
 		}
+
 		return nil
 	})
 	counter--
@@ -124,8 +118,8 @@ func getRecords(g *gocui.Gui, name string, shardID *string, iterator *string, co
 func getIterator(shardID *string, streamName string) (*string, error) {
 	shardIteratorInput := &kinesis.GetShardIteratorInput{
 		ShardId:           shardID,
-		ShardIteratorType: types.ShardIteratorTypeLatest,
-		StreamName:        new(string),
+		ShardIteratorType: types.ShardIteratorTypeTrimHorizon,
+		StreamName:        &streamName,
 	}
 	iterator, err := client.GetShardIterator(ctx, shardIteratorInput)
 	if err != nil {
@@ -136,7 +130,7 @@ func getIterator(shardID *string, streamName string) (*string, error) {
 
 func showMessage(g *gocui.Gui, sequenceNumber string) error {
 	g.Update(func(g *gocui.Gui) error {
-		v, err := g.View("log")
+		v, err := g.View(panelData)
 		if err != nil {
 			return err
 		}

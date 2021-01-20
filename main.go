@@ -65,6 +65,9 @@ func layout(g *gocui.Gui) error {
 		if err != nil {
 			addLog(g, err)
 		}
+		if _, err := setCurrentViewOnTop(g, panelStreamName); err != nil {
+			return err
+		}
 	}
 
 	if v, err := g.SetView(panelMessage, maxX/4, -1, 2*maxX/4, maxY-10); err != nil {
@@ -100,9 +103,6 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintln(helpV, "q to quit; e to export line as json file")
 	}
 
-	if _, err := g.SetCurrentView(panelStreamName); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -121,6 +121,16 @@ func keybindings(g *gocui.Gui) error {
 	}
 	for _, n := range []string{panelStreamName, panelMessage} {
 		if err := g.SetKeybinding(n, gocui.KeyArrowDown, gocui.ModNone, listItemDown); err != nil {
+			return err
+		}
+	}
+	for _, n := range []string{panelMessage, panelData} {
+		if err := g.SetKeybinding(n, gocui.KeyArrowLeft, gocui.ModNone, listItemBack); err != nil {
+			return err
+		}
+	}
+	for _, n := range []string{panelStreamName, panelMessage} {
+		if err := g.SetKeybinding(n, gocui.KeyArrowRight, gocui.ModNone, listItemSelect); err != nil {
 			return err
 		}
 	}
@@ -158,6 +168,18 @@ func listItemDown(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
+func listItemBack(g *gocui.Gui, v *gocui.View) error {
+	switch v.Name() {
+	case panelData:
+		swapFocus(g, v, panelMessage)
+		setCurrentViewOnTop(g, panelMessage)
+	case panelMessage:
+		swapFocus(g, v, panelStreamName)
+		setCurrentViewOnTop(g, panelStreamName)
+	}
+	return nil
+}
+
 func listItemSelect(g *gocui.Gui, v *gocui.View) error {
 	var l string
 	var err error
@@ -169,13 +191,47 @@ func listItemSelect(g *gocui.Gui, v *gocui.View) error {
 
 	switch v.Name() {
 	case panelStreamName:
+		swapFocus(g, v, panelMessage)
+		clearView(g, panelMessage)
+		setCurrentViewOnTop(g, panelMessage)
 		if err := populateList(g, l); err != nil {
 			addLog(g, err)
 		}
 	case panelMessage:
+		swapFocus(g, v, panelData)
+		clearView(g, panelData)
+		setCurrentViewOnTop(g, panelData)
 		if err := showMessage(g, l); err != nil {
 			addLog(g, err)
 		}
 	}
+	return nil
+}
+
+func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
+	if _, err := g.SetCurrentView(name); err != nil {
+		return nil, err
+	}
+	return g.SetViewOnTop(name)
+}
+
+func swapFocus(g *gocui.Gui, oldV *gocui.View, new string) error {
+	newV, err := g.View(new)
+	if err != nil {
+		return nil
+	}
+
+	newV.Highlight = true
+	oldV.Highlight = false
+
+	return nil
+}
+
+func clearView(g *gocui.Gui, name string) error {
+	v, err := g.View(name)
+	if err != nil {
+		return nil
+	}
+	v.Clear()
 	return nil
 }

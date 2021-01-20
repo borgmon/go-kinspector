@@ -105,10 +105,6 @@ func getRecords(g *gocui.Gui, name string, shardID *string, iterator *string, co
 			msgDict[r.SequenceNumber] = r.Data
 		}
 
-		if _, err := g.SetCurrentView(panelMessage); err != nil {
-			return err
-		}
-
 		return nil
 	})
 	counter--

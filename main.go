@@ -79,7 +79,7 @@ func layout(g *gocui.Gui) error {
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
-
+		v.Editable = true
 		v.Autoscroll = true
 
 	}
@@ -101,7 +101,7 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		fmt.Fprintln(helpV, "q to quit; e to export line as json file")
+		fmt.Fprintf(helpV, "q \033[32;7mto quit\033[0m e \033[32;7mto export line as json file\033[0m ")
 	}
 
 	return nil
@@ -168,12 +168,20 @@ func addLog(g *gocui.Gui, msg interface{}) {
 }
 
 func listItemUp(g *gocui.Gui, v *gocui.View) error {
-	v.MoveCursor(0, -1, false)
+	v.MoveCursor(0, -1, true)
+
 	return nil
 }
 
 func listItemDown(g *gocui.Gui, v *gocui.View) error {
-	v.MoveCursor(0, 1, false)
+	// l, err := getLine(v, 1)
+	// if err != nil {
+	// 	addLog(g, err)
+	// 	return err
+	// }
+	// if l != "" {
+	v.MoveCursor(0, 1, true)
+	// }
 	return nil
 }
 
@@ -189,12 +197,9 @@ func listItemBack(g *gocui.Gui, v *gocui.View) error {
 }
 
 func listItemSelect(g *gocui.Gui, v *gocui.View) error {
-	var l string
-	var err error
-
-	_, cy := v.Cursor()
-	if l, err = v.Line(cy); err != nil {
-		l = ""
+	l, err := getLine(v, 0)
+	if err != nil {
+		addLog(g, err)
 	}
 
 	switch v.Name() {
@@ -208,9 +213,7 @@ func listItemSelect(g *gocui.Gui, v *gocui.View) error {
 		if _, err := setCurrentViewOnTop(g, panelMessage); err != nil {
 			addLog(g, err)
 		}
-		if err := populateList(g, l); err != nil {
-			addLog(g, err)
-		}
+		go populateList(g, l)
 	case panelMessage:
 		if err := clearView(g, panelData); err != nil {
 			addLog(g, err)
@@ -251,4 +254,12 @@ func clearView(g *gocui.Gui, name string) error {
 	}
 	v.Clear()
 	return nil
+}
+
+func getLine(v *gocui.View, modifier int) (l string, err error) {
+	_, cy := v.Cursor()
+	if l, err = v.Line(cy + modifier); err != nil {
+		l = ""
+	}
+	return
 }

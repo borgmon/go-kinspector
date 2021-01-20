@@ -13,7 +13,7 @@ import (
 
 var (
 	client            *kinesis.Client = nil
-	recordPageCounter                 = 10
+	recordPageCounter                 = 5
 	msgDict                           = make(map[string][]byte)
 )
 
@@ -56,12 +56,15 @@ func getClient() (*kinesis.Client, error) {
 	return kinesis.NewFromConfig(config), nil
 }
 
-func populateList(g *gocui.Gui, name string) error {
+func populateList(g *gocui.Gui, name string) {
 	shard, err := listShards(name)
 	if err != nil {
-		return err
+		addLog(g, err)
 	}
-	return getRecords(g, name, shard, nil, recordPageCounter)
+	err = getRecords(g, name, shard, nil, recordPageCounter)
+	if err != nil {
+		addLog(g, err)
+	}
 }
 
 func listShards(name string) (*string, error) {

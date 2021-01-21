@@ -63,12 +63,9 @@ func layout(g *gocui.Gui) error {
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
-		_, err := getClient()
-		if err != nil {
-			return err
-		}
-		err = getStreamNames(g, v)
-		logError(g, err)
+
+		go initClient(g, v)
+
 		if _, err := setCurrentViewOnTop(g, panelStreamName); err != nil {
 			return err
 		}

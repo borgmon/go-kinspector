@@ -174,3 +174,12 @@ func updateList(g *gocui.Gui, records *kinesis.GetRecordsOutput) {
 		return nil
 	})
 }
+
+func initClient(g *gocui.Gui, v *gocui.View) {
+	_, err := getClient()
+	if err != nil {
+		addLog(g, err.Error())
+	}
+	getStreamNames(g, v)
+	logError(g, err)
+}

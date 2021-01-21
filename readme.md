@@ -1,4 +1,4 @@
-# go-kinesis-inspector
+# go-kinspector
 
 A CUI tool inspect your AWS kinesis streams, check records, and put new records.
 

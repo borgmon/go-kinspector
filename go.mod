@@ -1,4 +1,4 @@
-module github.com/borgmon/gokinesiswatcher
+module github.com/borgmon/go-kinesis-inspector
 
 go 1.15
 

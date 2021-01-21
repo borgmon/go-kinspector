@@ -15,12 +15,22 @@ go build .
 ### With Go
 
 ```zsh
-go get github.com/borgmon/go-kinesis-inspector
-go-kinesis-inspector
+go get github.com/borgmon/go-kinspector
+go-kinspector
+```
+
+if you cannot find the command, add your `~/go/bin` to your `PATH`
+
+```zsh
+export PATH="$PATH:$HOME/go/bin"
 ```
 
 ### Download binary
 
 ```zsh
-./go-kinesis-inspector
+./go-kinspector
 ```
+
+### Requirement
+
+config your aws key in `~/.aws`
